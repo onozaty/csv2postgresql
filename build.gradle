@@ -1,0 +1,19 @@
+apply plugin: 'java'
+
+def defaultEncoding = 'UTF-8'
+tasks.withType(AbstractCompile)*.options*.encoding = defaultEncoding
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories { jcenter() }
+
+dependencies {
+    compile group: 'org.postgresql', name: 'postgresql', version: '42.2.5'
+    compile group: 'commons-dbutils', name: 'commons-dbutils', version: '1.7'
+    compile group: 'org.apache.commons', name: 'commons-csv', version: '1.6'
+    compileOnly  group: 'org.projectlombok', name: 'lombok', version: '1.18.6'
+
+    testCompile 'junit:junit:4.12'
+    testCompile group: 'org.assertj', name: 'assertj-core', version: '3.12.2'
+}
