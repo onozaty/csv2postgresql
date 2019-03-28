@@ -20,7 +20,7 @@ public class LoaderTest {
     public void load_1カラム_1レコード() throws SQLException, IOException, URISyntaxException {
 
         String tableName = "test_table";
-        Path configFilePath = TestHelper.getResourcePath("config.properties", this.getClass());
+        Path configFilePath = TestHelper.getResourcePath("config-utf8.properties", this.getClass());
         Path csvFilePath = TestHelper.getResourcePath("1カラム1レコード.csv", this.getClass());
 
         Config config = Config.of(configFilePath);
@@ -40,7 +40,7 @@ public class LoaderTest {
     public void load_複数カラム_複数レコード() throws SQLException, IOException, URISyntaxException {
 
         String tableName = "test_table";
-        Path configFilePath = TestHelper.getResourcePath("config.properties", this.getClass());
+        Path configFilePath = TestHelper.getResourcePath("config-utf8.properties", this.getClass());
         Path csvFilePath = TestHelper.getResourcePath("複数カラム複数レコード.csv", this.getClass());
 
         Config config = Config.of(configFilePath);
@@ -62,7 +62,7 @@ public class LoaderTest {
     public void load_同じテーブルに対して繰り返し実行() throws SQLException, IOException, URISyntaxException {
 
         String tableName = "test_table";
-        Path configFilePath = TestHelper.getResourcePath("config.properties", this.getClass());
+        Path configFilePath = TestHelper.getResourcePath("config-utf8.properties", this.getClass());
         Path csvFilePath = TestHelper.getResourcePath("複数カラム複数レコード.csv", this.getClass());
 
         Config config = Config.of(configFilePath);
@@ -84,5 +84,71 @@ public class LoaderTest {
                         tuple("value2-1", "value2-2", "value2-3"),
                         tuple("value1-1", "value1-2", "value1-3"),
                         tuple("value2-1", "value2-2", "value2-3"));
+    }
+    
+    @Test
+    public void load_空カラム() throws SQLException, IOException, URISyntaxException {
+
+        String tableName = "test_table";
+        Path configFilePath = TestHelper.getResourcePath("config-utf8.properties", this.getClass());
+        Path csvFilePath = TestHelper.getResourcePath("空のカラム.csv", this.getClass());
+
+        Config config = Config.of(configFilePath);
+
+        // 前回のテストで存在したままの可能性があるので、いったん削除
+        TestHelper.dropTableIfExists(config, tableName);
+
+        new Loader(config).load(csvFilePath, tableName);
+
+        assertThat(TestHelper.selectAll(config, tableName))
+                .hasSize(2)
+                .extracting(x -> x.get("column1"), x -> x.get("column2"))
+                .containsExactlyInAnyOrder(
+                        tuple("", "A"),
+                        tuple(",", ""));
+    }
+
+    @Test
+    public void load_UTF8() throws SQLException, IOException, URISyntaxException {
+
+        String tableName = "test_table";
+        Path configFilePath = TestHelper.getResourcePath("config-utf8.properties", this.getClass());
+        Path csvFilePath = TestHelper.getResourcePath("utf8.csv", this.getClass());
+
+        Config config = Config.of(configFilePath);
+
+        // 前回のテストで存在したままの可能性があるので、いったん削除
+        TestHelper.dropTableIfExists(config, tableName);
+
+        new Loader(config).load(csvFilePath, tableName);
+
+        assertThat(TestHelper.selectAll(config, tableName))
+                .hasSize(2)
+                .extracting(x -> x.get("column1"), x -> x.get("column2"))
+                .containsExactlyInAnyOrder(
+                        tuple("1行目1", "1行目2"),
+                        tuple("2行目1", "2行目2"));
+    }
+
+    @Test
+    public void load_SJIS() throws SQLException, IOException, URISyntaxException {
+
+        String tableName = "test_table";
+        Path configFilePath = TestHelper.getResourcePath("config-sjis.properties", this.getClass());
+        Path csvFilePath = TestHelper.getResourcePath("sjis.csv", this.getClass());
+
+        Config config = Config.of(configFilePath);
+
+        // 前回のテストで存在したままの可能性があるので、いったん削除
+        TestHelper.dropTableIfExists(config, tableName);
+
+        new Loader(config).load(csvFilePath, tableName);
+
+        assertThat(TestHelper.selectAll(config, tableName))
+                .hasSize(2)
+                .extracting(x -> x.get("column1"), x -> x.get("column2"))
+                .containsExactlyInAnyOrder(
+                        tuple("1行目1", "1行目2"),
+                        tuple("2行目1", "2行目2"));
     }
 }

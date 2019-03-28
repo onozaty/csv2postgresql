@@ -1,6 +1,7 @@
 package com.enjoyxstudy.csv2postgresql;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.io.input.BOMInputStream;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,7 +27,7 @@ import lombok.RequiredArgsConstructor;
 public class Loader {
 
     private final Config config;
-    
+
     public static void main(String[] args) throws IOException, SQLException {
 
         if (args.length != 3) {
@@ -49,7 +51,10 @@ public class Loader {
             throws IOException, SQLException {
 
         try (
-                Reader reader = Files.newBufferedReader(csvFilePath, Charset.forName(config.getCsvEncoding()));
+                Reader reader = new InputStreamReader(
+                        // UTF-8のBOMを考慮
+                        new BOMInputStream(Files.newInputStream(csvFilePath)),
+                        Charset.forName(config.getCsvEncoding()));
                 CSVParser parser = CSVFormat.EXCEL.withHeader().parse(reader)) {
 
             // ヘッダ名からカラムの情報を生成
@@ -77,7 +82,7 @@ public class Loader {
                 }
 
                 int insertedCount = 0;
-                
+
                 // 一定件数毎にINSERT
                 List<String[]> insertTargetRecords = new ArrayList<>();
                 for (CSVRecord record : parser) {
@@ -96,7 +101,7 @@ public class Loader {
                 }
 
                 connection.commit();
-                
+
                 return insertedCount;
             }
         }
