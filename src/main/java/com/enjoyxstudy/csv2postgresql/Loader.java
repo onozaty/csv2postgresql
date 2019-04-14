@@ -50,14 +50,14 @@ public class Loader {
                 loadingCount -> {
                     System.out.print(
                             String.format(
-                                    "\rLoading... (Number of records: %,d, Elapsed millsecods: %,d)",
+                                    "\rLoading... (Number of records: %,d / Elapsed millsecods: %,d)",
                                     loadingCount,
                                     System.currentTimeMillis() - startTime));
                 });
 
         System.out.println(
                 String.format(
-                        "\rLoading is completed. (Number of records: %,d, Elapsed millsecods: %,d)",
+                        "\rLoading is completed. (Number of records: %,d / Elapsed millsecods: %,d)",
                         loadedCount,
                         System.currentTimeMillis() - startTime));
     }
