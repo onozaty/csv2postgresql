@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
 
 import org.apache.commons.csv.CSVFormat;
@@ -31,23 +32,37 @@ public class Loader {
     public static void main(String[] args) throws IOException, SQLException {
 
         if (args.length != 3) {
-            System.err.println("usage: java -jar csv2postgresql-all.jar <config file> <csv file> <table name>");
+            System.err.println("usage: java -jar csv2postgresql-all.jar <config file> <table name> <csv file>");
             System.exit(1);
         }
 
         Config config = Config.of(Paths.get(args[0]));
-        Path csvFilePath = Paths.get(args[1]);
-        String tableName = args[2];
+        String tableName = args[1];
+        Path csvFilePath = Paths.get(args[2]);
 
-        System.out.println("Loading start...");
+        long startTime = System.currentTimeMillis();
 
-        int insertedCount = new Loader(config).load(csvFilePath, tableName);
+        System.out.print("\nLoading...");
+
+        int loadedCount = new Loader(config).load(
+                csvFilePath,
+                tableName,
+                loadingCount -> {
+                    System.out.print(
+                            String.format(
+                                    "\rLoading... (Number of records: %,d, Elapsed millsecods: %,d)",
+                                    loadingCount,
+                                    System.currentTimeMillis() - startTime));
+                });
 
         System.out.println(
-                String.format("Loading is completed. %,d records were loaded.", insertedCount));
+                String.format(
+                        "\rLoading is completed. (Number of records: %,d, Elapsed millsecods: %,d)",
+                        loadedCount,
+                        System.currentTimeMillis() - startTime));
     }
 
-    public int load(Path csvFilePath, String tableName)
+    public int load(Path csvFilePath, String tableName, IntConsumer loadingNotifier)
             throws IOException, SQLException {
 
         try (
@@ -88,9 +103,10 @@ public class Loader {
                 for (CSVRecord record : parser) {
                     insertTargetRecords.add(toValues(record));
 
-                    if (record.size() == config.getBatchInsertSize()) {
+                    if (insertTargetRecords.size() == config.getBatchInsertSize()) {
                         table.insert(connection, insertTargetRecords);
                         insertedCount += insertTargetRecords.size();
+                        loadingNotifier.accept(insertedCount);
                         insertTargetRecords.clear();
                     }
                 }
@@ -98,6 +114,7 @@ public class Loader {
                 if (!insertTargetRecords.isEmpty()) {
                     table.insert(connection, insertTargetRecords);
                     insertedCount += insertTargetRecords.size();
+                    loadingNotifier.accept(insertedCount);
                 }
 
                 connection.commit();
@@ -105,6 +122,12 @@ public class Loader {
                 return insertedCount;
             }
         }
+    }
+
+    public int load(Path csvFilePath, String tableName)
+            throws IOException, SQLException {
+        return load(csvFilePath, tableName, x -> {
+        });
     }
 
     private String[] toValues(CSVRecord record) {
