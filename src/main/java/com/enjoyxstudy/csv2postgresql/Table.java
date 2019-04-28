@@ -1,5 +1,7 @@
 package com.enjoyxstudy.csv2postgresql;
 
+import java.io.IOException;
+import java.io.Reader;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
@@ -7,6 +9,8 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
+import org.postgresql.copy.CopyManager;
+import org.postgresql.core.BaseConnection;
 
 import lombok.Builder;
 import lombok.Singular;
@@ -69,5 +73,17 @@ public class Table {
                 connection,
                 insertSql,
                 records.toArray(new Object[records.size()][]));
+    }
+
+    public long load(Connection connection, Reader csvReader) throws SQLException, IOException {
+
+        String copySql = String.format(
+                "COPY %s (%s) FROM STDIN (FORMAT csv, HEADER)",
+                name,
+                columns.stream()
+                        .map(Column::getName)
+                        .collect(Collectors.joining(", ")));
+        
+        return new CopyManager((BaseConnection)connection).copyIn(copySql, csvReader);
     }
 }

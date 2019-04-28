@@ -1,5 +1,6 @@
 package com.enjoyxstudy.csv2postgresql;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -14,7 +15,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.function.IntConsumer;
+import java.util.function.LongConsumer;
 import java.util.stream.Collectors;
 
 import org.apache.commons.csv.CSVFormat;
@@ -42,42 +43,62 @@ public class Loader {
 
         long startTime = System.currentTimeMillis();
 
-        System.out.print("\nLoading...");
+        System.out.println("\nLoading...");
 
-        int loadedCount = new Loader(config).load(
+        long loadedCount = new Loader(config).loadByCopy(
                 csvFilePath,
-                tableName,
-                loadingCount -> {
-                    System.out.print(
-                            String.format(
-                                    "\rLoading... (Number of records: %,d / Elapsed millsecods: %,d)",
-                                    loadingCount,
-                                    System.currentTimeMillis() - startTime));
-                });
+                tableName);
 
         System.out.println(
                 String.format(
-                        "\rLoading is completed. (Number of records: %,d / Elapsed millsecods: %,d)",
+                        "Loading is completed. (Number of records: %,d / Elapsed millsecods: %,d)",
                         loadedCount,
                         System.currentTimeMillis() - startTime));
     }
 
-    public int load(Path csvFilePath, String tableName, IntConsumer loadingNotifier)
+    public long loadByCopy(Path csvFilePath, String tableName)
             throws IOException, SQLException {
 
-        try (
-                Reader reader = new InputStreamReader(
-                        // UTF-8のBOMを考慮
-                        new BOMInputStream(Files.newInputStream(csvFilePath)),
-                        Charset.forName(config.getCsvEncoding()));
-                CSVParser parser = CSVFormat.EXCEL.withHeader().parse(reader)) {
+        List<Column> columns;
+        try (CSVParser csvParser = CSVFormat.EXCEL.withHeader().parse(newCsvReader(csvFilePath))) {
 
-            // ヘッダ名からカラムの情報を生成
-            List<Column> columns = parser.getHeaderMap().entrySet().stream()
-                    .sorted(Comparator.comparing(Entry::getValue)) // 記述順でソート
-                    .map(Entry::getKey)
-                    .map(Column::of)
-                    .collect(Collectors.toList());
+            columns = readColumns(csvParser);
+        }
+
+        Table table = Table.builder()
+                .name(tableName)
+                .columns(columns)
+                .build();
+
+        try (Connection connection = DriverManager.getConnection(
+                config.getDatabaseUrl(),
+                config.getDatabaseUser(),
+                config.getDatabasePassword())) {
+
+            connection.setAutoCommit(false);
+
+            if (!table.exists(connection)) {
+                // テーブルが存在しなかった場合にはテーブル作成から
+                table.create(connection);
+            }
+
+            long insertedCount;
+            try (Reader csvReader = newCsvReader(csvFilePath)) {
+                insertedCount = table.load(connection, csvReader);
+            }
+
+            connection.commit();
+
+            return insertedCount;
+        }
+    }
+
+    public long load(Path csvFilePath, String tableName, LongConsumer loadingNotifier)
+            throws IOException, SQLException {
+
+        try (CSVParser csvParser = CSVFormat.EXCEL.withHeader().parse(newCsvReader(csvFilePath))) {
+
+            List<Column> columns = readColumns(csvParser);
 
             Table table = Table.builder()
                     .name(tableName)
@@ -96,11 +117,11 @@ public class Loader {
                     table.create(connection);
                 }
 
-                int insertedCount = 0;
+                long insertedCount = 0;
 
                 // 一定件数毎にINSERT
                 List<String[]> insertTargetRecords = new ArrayList<>();
-                for (CSVRecord record : parser) {
+                for (CSVRecord record : csvParser) {
                     insertTargetRecords.add(toValues(record));
 
                     if (insertTargetRecords.size() == config.getBatchInsertSize()) {
@@ -124,10 +145,29 @@ public class Loader {
         }
     }
 
-    public int load(Path csvFilePath, String tableName)
+    public long load(Path csvFilePath, String tableName)
             throws IOException, SQLException {
         return load(csvFilePath, tableName, x -> {
         });
+    }
+
+    private InputStreamReader newCsvReader(Path csvFilePath) throws IOException {
+
+        return new InputStreamReader(
+                new BufferedInputStream(
+                        // UTF-8のBOMを考慮
+                        new BOMInputStream(Files.newInputStream(csvFilePath))),
+                Charset.forName(config.getCsvEncoding()));
+    }
+
+    private List<Column> readColumns(CSVParser csvParser) {
+
+        // ヘッダ名からカラムの情報を生成
+        return csvParser.getHeaderMap().entrySet().stream()
+                .sorted(Comparator.comparing(Entry::getValue)) // 記述順でソート
+                .map(Entry::getKey)
+                .map(Column::of)
+                .collect(Collectors.toList());
     }
 
     private String[] toValues(CSVRecord record) {
