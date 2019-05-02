@@ -33,9 +33,9 @@ Loading is completed. (Number of records: 100,000 / Elapsed millsecods: 322)
 
 ### 設定ファイル
 
-設定ファイルには、DBの接続先情報と、CSVファイルのエンコーディングを記載します。
+設定ファイルには、PostgreSQLの接続先情報と、CSVファイルのエンコーディングを記載します。
 
-* `database.url` JDBC接続文字列
+* `database.url` JDBC接続URL
 * `database.user` DBユーザ名
 * `database.password` DBパスワード
 * `csv.encoding` CSVファイルのエンコーディング
@@ -60,14 +60,14 @@ csv.encoding=UTF-8
 CSVファイルのヘッダは必須です。ヘッダに記載のフィールド名を使って、ロード先のテーブルのカラムとマッピングします。
 なお、英数字以外の文字が指定されていた場合、アンダースコア(`_`)に置換されます。
 
-たとえば`User Name`というフィールドがあった場合、DBのカラムとしては`user_name`にマッピングされます。
+たとえば`User Name`というフィールドがあった場合、データベースのカラムとしては`user_name`にマッピングされます。
 
 ## サンプル
 
 PostgreSQLを起動するためのVagrant環境と、設定ファイルとCSVファイルのサンプルが用意してあります。
 これらを使うことによって、簡単に本ツールを試せます。
 
-`vagrant`フォルダにて`vagrant up`を実行すると、PostgreSQL11をインストールした仮想環境(192.168.33.10)を立ち上げます。
+`vagrant`フォルダにて`vagrant up`を実行すると、PostgreSQL11をインストールした仮想環境(192.168.33.10)が立ち上がります。
 
 `sample`フォルダ配下の設定ファイルとCSVファイルを利用してロードを行います。
 ```
