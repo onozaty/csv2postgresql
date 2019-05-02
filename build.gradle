@@ -1,0 +1,34 @@
+buildscript {
+    repositories { maven { url 'https://plugins.gradle.org/m2/' } }
+    dependencies { classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.4' }
+}
+
+apply plugin: 'java'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+def defaultEncoding = 'UTF-8'
+tasks.withType(AbstractCompile)*.options*.encoding = defaultEncoding
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories { jcenter() }
+
+version = '1.0.0'
+
+dependencies {
+    compile group: 'org.postgresql', name: 'postgresql', version: '42.2.5'
+    compile group: 'commons-dbutils', name: 'commons-dbutils', version: '1.7'
+    compile group: 'org.apache.commons', name: 'commons-csv', version: '1.6'
+    compile group: 'commons-io', name: 'commons-io', version: '2.6'
+    compileOnly  group: 'org.projectlombok', name: 'lombok', version: '1.18.6'
+
+    testCompile 'junit:junit:4.12'
+    testCompile group: 'org.assertj', name: 'assertj-core', version: '3.12.2'
+}
+
+def mainClassName = 'com.enjoyxstudy.csv2postgresql.Loader'
+
+jar {
+    manifest { attributes('Main-Class' : mainClassName, "Implementation-Version": version) }
+}

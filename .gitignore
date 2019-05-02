@@ -1,0 +1,5 @@
+**/build/
+**/.gradle/
+**/bin/
+**/.vagrant/
+sample/sample-1000000.csv
